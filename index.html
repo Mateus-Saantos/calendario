@@ -34,7 +34,28 @@
       </a>
     </footer>
 
+    <!-- Modal de edição do dia -->
+    <div id="modalOverlay" class="modal-overlay">
+      <div class="modal">
+        <button id="modalClose" class="modal-close" type="button">&times;</button>
+        <h2 id="modalDate">--</h2>
+
+        <label for="modalStatus">Status</label>
+        <select id="modalStatus">
+          <option value="folga">Folga</option>
+          <option value="trabalho">Trabalho</option>
+        </select>
+
+        <label for="modalComment">Comentário</label>
+        <textarea id="modalComment" rows="3" placeholder="Ex: FT programada às 08:00"></textarea>
+
+        <div class="modal-actions">
+          <button id="modalReset" type="button" class="btn-ghost">Restaurar automático</button>
+          <button id="modalSave" type="button" class="btn-save">Salvar</button>
+        </div>
+      </div>
+    </div>
+
     <script src="script.js"></script>
   </body>
 </html>
-

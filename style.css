@@ -106,8 +106,18 @@ h1{ font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   font-size: 12px;
   font-weight: 600;
   position:relative;
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
-.day.empty{ background: transparent; }
+.day.empty{ background: transparent; cursor: default; }
+.day.empty:active{ transform:none; }
+
+.day:not(.empty):active{
+  transform: scale(0.92);
+  filter: brightness(1.15);
+}
 
 .day.folga{
   background: var(--folga-bg);
@@ -138,6 +148,27 @@ h1{ font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   border-radius: 10px;
   border: 1.5px solid var(--text);
 }
+
+/* dia editado manualmente: pontinho branco no canto */
+.day.manual::before{
+  content:'';
+  position:absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+/* indicador de comentário */
+.day .pin{
+  position:absolute;
+  bottom: 2px;
+  font-size: 8px;
+  line-height: 1;
+}
+
 footer{
   text-align:center;
   color: var(--muted);
@@ -152,6 +183,96 @@ footer{
     object-fit: contain;
     filter: invert(1);
   }
+
+/* ===== Modal ===== */
+.modal-overlay{
+  display:none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open{ display:flex; }
+
+.modal{
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 18px;
+  width: 100%;
+  max-width: 320px;
+  position: relative;
+}
+.modal-close{
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
+.modal h2{
+  font-size: 16px;
+  margin-bottom: 16px;
+  padding-right: 20px;
+}
+.modal label{
+  display:block;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  margin-top: 14px;
+}
+.modal select,
+.modal textarea{
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px;
+  resize: vertical;
+}
+.modal select:focus,
+.modal textarea:focus{
+  outline: none;
+  border-color: var(--folga-border);
+}
+.modal-actions{
+  display:flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.btn-ghost, .btn-save{
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  font-family: inherit;
+}
+.btn-ghost{
+  background: transparent;
+  color: var(--muted);
+}
+.btn-save{
+  background: var(--folga);
+  color: #08130f;
+  border-color: var(--folga);
+}
 
 @media (min-width: 1200px) {
   /* Desktop */
