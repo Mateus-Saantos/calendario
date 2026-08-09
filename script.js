@@ -52,3 +52,11 @@ for(let monthIdx=0; monthIdx<12; monthIdx++){
   `;
   container.appendChild(monthEl);
 }
+const elementoHoje = document.querySelector('.day.today');
+
+if (elementoHoje) {
+    elementoHoje.scrollIntoView({
+        behavior: 'instant',
+        block: 'center'
+    });
+}
