@@ -286,6 +286,53 @@ yearInput.addEventListener('keydown', (e) => {
 yearToday.addEventListener('click', () => setDisplayYear(REAL_CURRENT_YEAR));
 
 /* =========================================================
+   Botão flutuante: voltar pro dia atual
+   ========================================================= */
+ 
+const backToTodayBtn = document.getElementById('backToTodayBtn');
+let todayObserver = null;
+ 
+function setupBackToTodayWatcher(){
+  if(todayObserver) todayObserver.disconnect();
+ 
+  // Se o ano exibido não é o ano real, não existe "hoje" na tela —
+  // o botão fica sempre visível, e clicar nele volta pro ano E rola até o dia.
+  if(displayYear !== REAL_CURRENT_YEAR){
+    backToTodayBtn.classList.add('show');
+    return;
+  }
+ 
+  const elementoHoje = document.querySelector('.day.today');
+  if(!elementoHoje){
+    backToTodayBtn.classList.remove('show');
+    return;
+  }
+ 
+  todayObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      backToTodayBtn.classList.toggle('show', !entry.isIntersecting);
+    });
+  }, { threshold: 0.4 });
+ 
+  todayObserver.observe(elementoHoje);
+}
+ 
+backToTodayBtn.addEventListener('click', () => {
+  if(displayYear !== REAL_CURRENT_YEAR){
+    setDisplayYear(REAL_CURRENT_YEAR);
+    // espera o novo calendário renderizar antes de rolar até hoje
+    requestAnimationFrame(() => {
+      const el = document.querySelector('.day.today');
+      if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return;
+  }
+  const el = document.querySelector('.day.today');
+  if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+
+/* =========================================================
    Modal: edição de dia (status manual + comentário)
    ========================================================= */
 
@@ -527,6 +574,9 @@ function render(){
       openDayModal(new Date(y, m - 1, d));
     });
   });
+ 
+  setupBackToTodayWatcher();
+
 }
 
 /* =========================================================

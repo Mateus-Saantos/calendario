@@ -267,7 +267,7 @@ footer{
   text-align:center;
   color: var(--muted);
   font-size: 11px;
-  margin-top: 20px;
+  margin: 20px 10% 0 10%;
   font-family: var(--mono);
 }
 .github-icon {
@@ -479,6 +479,38 @@ footer{
   opacity: 1;
   transform: translate(-50%, 0);
 }
+/* Botão flutuante: voltar pro dia atual */
+.back-to-today{
+  position: fixed;
+  right: 16px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--folga-border);
+  color: var(--folga);
+  padding: 10px 16px 10px 12px;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  z-index: 1200;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.back-to-today.show{
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.back-to-today:active{ filter: brightness(1.15); }
+.back-to-today-icon{ font-size: 14px; line-height: 1; }
 
 @media (min-width: 1200px) {
   /* Desktop */
@@ -504,6 +536,10 @@ footer{
     margin-top: 23%;
   }
   footer{
-    margin-bottom: 5%;
+    margin: 5% 25% ;
+  }
+  .back-to-today{
+    right: 48%;
+    bottom: 78%;
   }
 }
