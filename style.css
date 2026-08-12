@@ -495,7 +495,7 @@ footer{
 .back-to-today{
   position: fixed;
   left: 44%;
-  top: 145px;
+  top: 166px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -509,7 +509,7 @@ footer{
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-  z-index: 1200;
+  z-index: 999;
   opacity: 0;
   transform: translateY(12px);
   pointer-events: none;
