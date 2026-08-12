@@ -4,14 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="style.css">
-<title>Cronograma de Escala — 2026</title>
+<title>Cronograma de Escala</title>
 </head>
   <body>
     <div class="menu_superior">
-        <header>
-        <div class="eyebrow">Escala 12x36</div>
-        <h1>Mateus Rodrigues dos Santos</h1>
-        <div class="sub">Janeiro → Dezembro de 2026</div>
+      <div class="menu-wrap">
+        <button id="menuBtn" class="menu-btn" type="button" aria-label="Abrir menu">⋮</button>
+        <div id="menuDropdown" class="menu-dropdown">
+          <button type="button" data-action="config">Configurações</button>
+          <button type="button" data-action="share">Compartilhar escala</button>
+          <button type="button" data-action="about">Sobre</button>
+        </div>
+      </div>
+
+      <header>
+        <div class="eyebrow">Escala</div>
+        <h1>Nome do Usuário</h1>
+        <div class="sub">
+          Janeiro → Dezembro de
+          <span class="year-wrap">
+            <button id="yearBtn" class="year-btn" type="button">2026</button>
+            <div id="yearDropdown" class="year-dropdown">
+              <div class="year-list" id="yearList"></div>
+              <div class="year-custom">
+                <input type="number" id="yearInput" placeholder="Ano">
+                <button id="yearGo" type="button" class="btn-save-mini">Ir</button>
+              </div>
+              <button id="yearToday" type="button" class="btn-ghost-mini">Voltar para o ano atual</button>
+            </div>
+          </span>
+        </div>
       </header>
 
       <div class="legend">
@@ -28,7 +50,7 @@
       <p>
         Gerado a partir de Agosto - 2026 <br> Afim de consultar os dias de trabalho
       </p>
-  
+
       <a href="https://github.com/Mateus-Saantos" target="_blank">
         <img class="github-icon" src="img/GitHub_Logo.svg" alt="GitHub">
       </a>
@@ -55,6 +77,71 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Configurações -->
+    <div id="settingsOverlay" class="modal-overlay">
+      <div class="modal">
+        <button id="settingsClose" class="modal-close" type="button">&times;</button>
+        <h2>Configurações</h2>
+
+        <label for="cfgNome">Nome</label>
+        <input type="text" id="cfgNome" placeholder="Seu nome">
+
+        <label for="cfgTipo">Tipo de escala</label>
+        <select id="cfgTipo">
+          <option value="12x36">12x36</option>
+          <option value="5x2">5x2</option>
+          <option value="personalizada">Personalizada</option>
+        </select>
+
+        <div id="cfgCustomGroup" class="custom-group">
+          <label for="cfgCustomWork">Dias trabalhando</label>
+          <input type="number" id="cfgCustomWork" min="1" value="3">
+          <label for="cfgCustomOff">Dias de folga</label>
+          <input type="number" id="cfgCustomOff" min="1" value="2">
+        </div>
+
+        <label for="cfgRefDate">Data de referência</label>
+        <input type="date" id="cfgRefDate">
+
+        <label>Nesse dia eu estava</label>
+        <div class="radio-row">
+          <label class="radio-option"><input type="radio" name="cfgRefStatus" value="trabalho"> Trabalhando</label>
+          <label class="radio-option"><input type="radio" name="cfgRefStatus" value="folga"> De folga</label>
+        </div>
+
+        <div class="modal-actions">
+          <button id="settingsCancel" type="button" class="btn-ghost">Cancelar</button>
+          <button id="settingsSave" type="button" class="btn-save">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de conflito (link compartilhado vs config local) -->
+    <div id="conflictOverlay" class="modal-overlay">
+      <div class="modal">
+        <h2>Escala compartilhada encontrada</h2>
+        <p class="conflict-text">Encontramos uma escala compartilhada. Deseja carregar essa configuração?</p>
+        <div class="modal-actions">
+          <button id="conflictKeep" type="button" class="btn-ghost">Manter minha escala</button>
+          <button id="conflictLoad" type="button" class="btn-save">Carregar escala</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Sobre -->
+    <div id="aboutOverlay" class="modal-overlay">
+      <div class="modal">
+        <button id="aboutClose" class="modal-close" type="button">&times;</button>
+        <h2>Sobre</h2>
+        <p class="about-text">Calendário de escalas de trabalho. </p><br>
+        <p class="about-text">Configure seu nome, tipo de escala e data de referência em ⋮ → Configurações. </p><br>
+        <p class="about-text">Compartilhe sua escala com colegas em ⋮ → Compartilhar escala.</p>
+
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
 
     <script src="script.js"></script>
   </body>

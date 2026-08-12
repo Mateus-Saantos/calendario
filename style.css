@@ -29,6 +29,8 @@ body{
   -webkit-font-smoothing: antialiased
 }
 
+.menu_superior{ position: relative; }
+
 header{ text-align:center; margin-bottom: 22px; }
 .eyebrow{
   font-family: var(--mono);
@@ -40,6 +42,100 @@ header{ text-align:center; margin-bottom: 22px; }
 }
 h1{ font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
 .sub{ color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+.year-wrap{
+  position: relative;
+  display: inline-block;
+}
+.year-btn{
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--muted);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 2px;
+  -webkit-tap-highlight-color: transparent;
+}
+.year-btn:active{ opacity: 0.7; }
+
+.year-dropdown{
+  display:none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  z-index: 1500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  text-align: left;
+}
+.year-dropdown.open{ display:block; }
+
+.year-list{
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+.year-list button{
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.year-list button:active{ filter: brightness(1.2); }
+.year-list button.selected{
+  border-color: var(--folga-border);
+  color: var(--folga);
+}
+
+.year-custom{
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.year-custom input{
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px;
+  min-width: 0;
+}
+.btn-save-mini, .btn-ghost-mini{
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 8px 10px;
+}
+.btn-save-mini{
+  background: var(--folga);
+  color: #08130f;
+  border: 1px solid var(--folga);
+}
+.btn-ghost-mini{
+  width: 100%;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
 
 .legend{
   display:flex;
@@ -149,7 +245,6 @@ h1{ font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   border: 1.5px solid var(--text);
 }
 
-/* dia editado manualmente: pontinho branco no canto */
 .day.manual::before{
   content:'';
   position:absolute;
@@ -161,7 +256,6 @@ h1{ font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   background: var(--text);
 }
 
-/* indicador de comentário */
 .day .pin{
   position:absolute;
   bottom: 2px;
@@ -184,7 +278,57 @@ footer{
     filter: invert(1);
   }
 
-/* ===== Modal ===== */
+/* ===== Menu de três pontos ===== */
+.menu-wrap{
+  position: absolute;
+  top: -14px;
+  right: -8px;
+}
+.menu-btn{
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.menu-btn:active{ filter: brightness(1.2); }
+
+.menu-dropdown{
+  display:none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 1500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+.menu-dropdown.open{ display:block; }
+.menu-dropdown button{
+  display:block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: inherit;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+.menu-dropdown button:last-child{ border-bottom: none; }
+.menu-dropdown button:active{ background: var(--bg); }
+
+/* ===== Modal (genérico, usado em edição de dia / configurações / conflito / sobre) ===== */
 .modal-overlay{
   display:none;
   position: fixed;
@@ -194,6 +338,7 @@ footer{
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
 }
 .modal-overlay.open{ display:flex; }
 
@@ -203,8 +348,10 @@ footer{
   border-radius: 14px;
   padding: 20px 18px;
   width: 100%;
-  max-width: 320px;
+  max-width: 340px;
   position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .modal-close{
   position: absolute;
@@ -233,7 +380,10 @@ footer{
   margin-top: 14px;
 }
 .modal select,
-.modal textarea{
+.modal textarea,
+.modal input[type="text"],
+.modal input[type="date"],
+.modal input[type="number"]{
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--line);
@@ -245,7 +395,8 @@ footer{
   resize: vertical;
 }
 .modal select:focus,
-.modal textarea:focus{
+.modal textarea:focus,
+.modal input:focus{
   outline: none;
   border-color: var(--folga-border);
 }
@@ -274,6 +425,61 @@ footer{
   border-color: var(--folga);
 }
 
+/* Configurações: radio */
+.custom-group{ display:none; }
+.custom-group.show{ display:block; }
+.custom-group input{ margin-bottom: 6px; }
+
+.radio-row{
+  display:flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+.radio-option{
+  display:flex !important;
+  align-items:center;
+  gap: 6px;
+  font-size: 13px !important;
+  text-transform: none !important;
+  font-family: inherit !important;
+  color: var(--text) !important;
+  letter-spacing: normal !important;
+  margin: 0 !important;
+  cursor: pointer;
+}
+.radio-option input{ width: 15px; height: 15px; }
+
+.conflict-text, .about-text{
+  font-size: 13.5px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* Toast */
+.toast{
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translate(-50%, 12px);
+  background: var(--panel);
+  border: 1px solid var(--folga-border);
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-family: var(--mono);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 3000;
+  white-space: nowrap;
+}
+.toast.show{
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 @media (min-width: 1200px) {
   /* Desktop */
   body{
@@ -289,7 +495,11 @@ footer{
     background-color: #161d24;
     border-bottom: 1px solid #26313a;
 
-  } 
+  }
+  .menu-wrap{
+    top: 20px;
+    right: 25%;
+  }
   #calendar{
     margin-top: 23%;
   }
