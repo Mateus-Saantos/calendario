@@ -29,7 +29,19 @@ body{
   -webkit-font-smoothing: antialiased
 }
 
-.menu_superior{ position: relative; }
+.menu_superior {
+  padding-top: 20px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  background-color: #161d24;
+  border-bottom: 1px solid #26313a;
+}
+  #calendar{
+  margin-top: 30%;
+}
 
 header{ text-align:center; margin-bottom: 22px; }
 .eyebrow{
@@ -76,6 +88,9 @@ h1{ font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   text-align: left;
 }
 .year-dropdown.open{ display:block; }
+.menu-dropdown.open ~ .back-to-today {
+    display: none;
+}
 
 .year-list{
   display: grid;
@@ -281,8 +296,8 @@ footer{
 /* ===== Menu de três pontos ===== */
 .menu-wrap{
   position: absolute;
-  top: -14px;
-  right: -8px;
+  top: 14px;
+  right: 10px;
 }
 .menu-btn{
   background: var(--panel);
@@ -482,8 +497,8 @@ footer{
 /* Botão flutuante: voltar pro dia atual */
 .back-to-today{
   position: fixed;
-  right: 16px;
-  bottom: 24px;
+  left: 44%;
+  top: 145px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -512,6 +527,7 @@ footer{
 .back-to-today:active{ filter: brightness(1.15); }
 .back-to-today-icon{ font-size: 14px; line-height: 1; }
 
+
 @media (min-width: 1200px) {
   /* Desktop */
   body{
@@ -526,20 +542,18 @@ footer{
     z-index: 1000;
     background-color: #161d24;
     border-bottom: 1px solid #26313a;
-
   }
   .menu-wrap{
     top: 20px;
     right: 25%;
   }
   #calendar{
-    margin-top: 23%;
+    margin-top: 23%!important;
   }
   footer{
     margin: 5% 25% ;
   }
   .back-to-today{
-    right: 48%;
-    bottom: 78%;
+    left: 48%;
   }
 }

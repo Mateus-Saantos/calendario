@@ -181,6 +181,21 @@ const REAL_CURRENT_YEAR = today.getFullYear();
 let displayYear = REAL_CURRENT_YEAR;
 const container = document.getElementById('calendar');
 
+const menu = document.querySelector('.menu_superior');
+const calendar = document.querySelector('#calendar');
+
+if (menu && calendar) {
+    function ajustarCalendar() {
+        const alturaMenu = menu.getBoundingClientRect().height;
+        calendar.style.marginTop = `${alturaMenu - 10}px`;
+    }
+
+    const observer = new ResizeObserver(ajustarCalendar);
+
+    observer.observe(menu);
+    ajustarCalendar();
+}
+
 /* =========================================================
    Toast
    ========================================================= */
