@@ -38,10 +38,8 @@ async function salvarCronograma(dados, id){
   return cronogramaId;
 }
 
-/**
- * Busca um cronograma pelo id.
- * Retorna os dados salvos, ou null se o id não existir.
- */
+/*  Busca um cronograma pelo id.
+    Retorna os dados salvos, ou null se o id não existir. */
 async function carregarCronogramaPorId(id){
   if(!id) return null;
   const snap = await getDoc(doc(db, "cronogramas", id));

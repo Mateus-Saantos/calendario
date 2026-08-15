@@ -312,19 +312,21 @@ const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 const REAL_CURRENT_YEAR = today.getFullYear();
 let displayYear = REAL_CURRENT_YEAR;
 const container = document.getElementById('calendar');
-
 const menu = document.querySelector('.menu_superior');
 const calendar = document.querySelector('#calendar');
+const viewOnlyBannerEl = document.getElementById('viewOnlyBanner');
 
 if (menu && calendar) {
     function ajustarCalendar() {
         const alturaMenu = menu.getBoundingClientRect().height;
-        calendar.style.marginTop = `${alturaMenu - 10}px`;
+        if (viewOnlyBannerEl) viewOnlyBannerEl.style.marginTop = `${alturaMenu + 16}px`;
+        const bannerVisivel = viewOnlyBannerEl && viewOnlyBannerEl.classList.contains('show');
+        calendar.style.marginTop = bannerVisivel ? '16px' : `${alturaMenu + 16}px`;
     }
 
     const observer = new ResizeObserver(ajustarCalendar);
-
     observer.observe(menu);
+    if (viewOnlyBannerEl) observer.observe(viewOnlyBannerEl);
     ajustarCalendar();
 }
 
@@ -788,6 +790,10 @@ mineCopy.addEventListener('click', async () => {
 });
 
 mineShare.addEventListener('click', () => {
+  if(isViewOnly){
+    showToast('Você está só visualizando — volte pro seu cronograma antes de compartilhar');
+    return;
+  }
   mineOverlay.classList.remove('open');
   shareSchedule();
 });
