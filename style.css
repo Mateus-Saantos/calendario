@@ -525,6 +525,101 @@ footer{
 .back-to-today-icon{ font-size: 14px; line-height: 1; }
 
 
+/* ===== Modo visualização (link de outra pessoa, sem virar dono) ===== */
+.view-only-banner{
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--trabalho-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 74px 0 16px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.view-only-banner.show{ display:flex; }
+.view-only-banner button{
+  flex-shrink: 0;
+  background: var(--trabalho);
+  color: #2a1206;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ===== Configurações: botão "já tenho um ID" ===== */
+.settings-load-existing{
+  width: 100%;
+  margin-top: 10px;
+  background: transparent;
+}
+
+/* ===== Meu cronograma ===== */
+.mine-id{
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--folga);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* ===== Gerenciador ===== */
+.manager-list{
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.manager-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.manager-item-info{ display:flex; flex-direction:column; gap: 2px; }
+.manager-item-name{ font-size: 13.5px; font-weight: 600; }
+.manager-item-meta{
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.manager-item button{
+  flex-shrink: 0;
+  background: var(--folga);
+  color: #08130f;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.manager-empty{
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 20px 0;
+}
+
 @media (min-width: 1200px) {
   /* Desktop */
   body{

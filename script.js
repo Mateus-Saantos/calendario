@@ -7,6 +7,7 @@ const weekdayLabels = ["D","S","T","Q","Q","S","S"];
 
 const OVERRIDES_STORAGE_KEY = 'escala-overrides-2026';
 const CONFIG_STORAGE_KEY = 'escala-config-v1';
+const CLOUD_ID_STORAGE_KEY = 'escala-cloud-id';
 
 const DEFAULT_CONFIG = {
   nome: '',
@@ -128,7 +129,73 @@ function saveOverrides(overrides){
   }
 }
 
-/* ---------- Compartilhamento por URL ---------- */
+// Em modo visualização, as edições vêm do cronograma carregado (memória),
+// nunca do localStorage do dispositivo.
+function getActiveOverrides(){
+  return isViewOnly ? viewOnlyOverrides : loadOverrides();
+}
+
+/* ---------- Persistência: ID do cronograma na nuvem ----------
+   Uma vez que o usuário compartilha pela primeira vez, guardamos
+   esse ID localmente. Todo salvamento seguinte atualiza o MESMO
+   documento no Firestore — o link não muda depois de gerado. */
+
+function getCloudId(){
+  return localStorage.getItem(CLOUD_ID_STORAGE_KEY);
+}
+
+function setCloudId(id){
+  localStorage.setItem(CLOUD_ID_STORAGE_KEY, id);
+}
+
+/* ---------- Ponte com o firebase.js ----------
+   firebase.js expõe window.firebaseCronograma. Se por algum motivo
+   ele não carregou (offline, erro de rede, etc.), a aplicação
+   continua funcionando 100% local — só a parte "nuvem" fica indisponível. */
+
+function cloudDisponivel(){
+  return typeof window.firebaseCronograma !== 'undefined';
+}
+
+/* Envia a config + overrides atuais pro Firestore, reaproveitando o
+   mesmo ID já existente. Não faz nada se o usuário ainda não tiver
+   compartilhado nenhuma vez (não existe ID ainda). */
+async function syncToCloud(){
+  const cloudId = getCloudId();
+  if(!cloudId) return; // nada compartilhado ainda, não há o que sincronizar
+  if(!cloudDisponivel()){
+    console.warn('Firebase indisponível — alteração ficou salva só localmente.');
+    return;
+  }
+  try{
+    await window.firebaseCronograma.salvarCronograma(
+      { config: currentConfig, overrides: loadOverrides() },
+      cloudId
+    );
+    await window.firebaseCronograma.salvarIndice(cloudId, {
+      nome: currentConfig.nome || '(sem nome)',
+      tipo: currentConfig.tipo,
+      atualizadoEm: Date.now()
+    });
+  }catch(e){
+    console.error('Erro ao sincronizar com a nuvem:', e);
+  }
+}
+
+/* SHA-256 do texto em hexadecimal — usado só pra comparar a senha do
+   Gerenciador com o hash salvo no Firestore. A senha em si nunca é
+   armazenada nem trafega em texto puro. */
+async function sha256Hex(texto){
+  const bytes = new TextEncoder().encode(texto);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/* ---------- Compartilhamento por URL (formato antigo, com parâmetros) ----------
+   Mantido só para não quebrar links já compartilhados antes da versão
+   com Firebase. Links novos usam ?id=XXXXXX (ver seção Firebase acima). */
 
 function parseSharedConfigFromURL(){
   const params = new URLSearchParams(window.location.search);
@@ -150,22 +217,79 @@ function parseSharedConfigFromURL(){
   return cfg;
 }
 
-function buildShareURL(config){
-  const params = new URLSearchParams();
-  params.set('nome', config.nome || '');
-  params.set('escala', config.tipo);
-  params.set('data', config.referenceDate);
-  params.set('estado', config.referenceStatus);
-  if(config.tipo === 'personalizada'){
-    params.set('wdias', config.custom.trabalho);
-    params.set('fdias', config.custom.folga);
-  }
-  const base = window.location.origin + window.location.pathname;
-  return `${base}?${params.toString()}`;
-}
-
 function cleanURL(){
   window.history.replaceState(null, '', window.location.pathname);
+}
+
+/* =========================================================
+   Carregar um cronograma pelo ID — usado por: link compartilhado,
+   "já tenho um ID" na criação, e "Visualizar" no Gerenciador.
+   ========================================================= */
+
+const viewOnlyBanner = document.getElementById('viewOnlyBanner');
+const viewOnlyText = document.getElementById('viewOnlyText');
+const viewOnlyCreateBtn = document.getElementById('viewOnlyCreateBtn');
+
+function updateViewOnlyBanner(){
+  if(isViewOnly){
+    viewOnlyText.textContent = `Visualizando o cronograma de ${currentConfig.nome || 'alguém'} — você não é o dono`;
+    viewOnlyCreateBtn.textContent = getCloudId() ? 'Voltar pro meu' : 'Criar o meu';
+    viewOnlyBanner.classList.add('show');
+  }else{
+    viewOnlyBanner.classList.remove('show');
+  }
+}
+
+viewOnlyCreateBtn.addEventListener('click', async () => {
+  const meuId = getCloudId();
+  if(meuId){
+    await loadCronogramaById(meuId, true);
+    showToast('Voltando pro seu cronograma');
+  }else{
+    openSettings('create');
+  }
+});
+
+/**
+ * Carrega um cronograma pelo ID.
+ * - asOwner=true: grava local (esse ID passa a ser "o meu").
+ * - asOwner=false: modo visualização, nada é gravado no dispositivo.
+ */
+async function loadCronogramaById(id, asOwner){
+  if(!cloudDisponivel()){
+    showToast('Recurso online indisponível agora');
+    return false;
+  }
+  let cloudData = null;
+  try{
+    cloudData = await window.firebaseCronograma.carregarCronogramaPorId(id);
+  }catch(e){
+    console.error('Erro ao carregar cronograma:', e);
+  }
+  if(!cloudData || !cloudData.config){
+    showToast('Cronograma não encontrado');
+    return false;
+  }
+
+  currentConfig = cloudData.config;
+
+  if(asOwner){
+    isViewOnly = false;
+    viewOnlyOverrides = {};
+    viewOnlyId = null;
+    saveConfig(currentConfig);
+    if(cloudData.overrides) saveOverrides(cloudData.overrides);
+    setCloudId(id);
+  }else{
+    isViewOnly = true;
+    viewOnlyId = id;
+    viewOnlyOverrides = cloudData.overrides || {};
+  }
+
+  updateHeader();
+  updateViewOnlyBanner();
+  render();
+  return true;
 }
 
 /* =========================================================
@@ -174,6 +298,14 @@ function cleanURL(){
 
 let currentConfig = loadConfig();
 let pendingSharedConfig = null;
+let pendingSharedOverrides = null;
+let pendingSharedId = null;
+
+// Modo visualização: quando o dispositivo não tem cronograma próprio e
+// abre o link de outra pessoa. Não grava nada local nesse modo.
+let isViewOnly = false;
+let viewOnlyOverrides = {};
+let viewOnlyId = null;
 
 const now = new Date();
 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -244,8 +376,16 @@ menuDropdown.querySelectorAll('button[data-action]').forEach(btn => {
     e.stopPropagation();
     menuDropdown.classList.remove('open');
     const action = btn.dataset.action;
-    if(action === 'config') openSettings();
+
+    if(isViewOnly && (action === 'config' || action === 'share')){
+      showToast('Você está só visualizando — crie o seu próprio cronograma primeiro');
+      return;
+    }
+
+    if(action === 'config') openSettings('edit');
     if(action === 'share') shareSchedule();
+    if(action === 'mine') openMineModal();
+    if(action === 'manager') openManagerPassword();
     if(action === 'about') aboutOverlay.classList.add('open');
   });
 });
@@ -303,35 +443,33 @@ yearToday.addEventListener('click', () => setDisplayYear(REAL_CURRENT_YEAR));
 /* =========================================================
    Botão flutuante: voltar pro dia atual
    ========================================================= */
- 
+
 const backToTodayBtn = document.getElementById('backToTodayBtn');
 let todayObserver = null;
- 
+
 function setupBackToTodayWatcher(){
   if(todayObserver) todayObserver.disconnect();
- 
-  // Se o ano exibido não é o ano real, não existe "hoje" na tela —
-  // o botão fica sempre visível, e clicar nele volta pro ano E rola até o dia.
+
   if(displayYear !== REAL_CURRENT_YEAR){
     backToTodayBtn.classList.add('show');
     return;
   }
- 
+
   const elementoHoje = document.querySelector('.day.today');
   if(!elementoHoje){
     backToTodayBtn.classList.remove('show');
     return;
   }
- 
+
   todayObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       backToTodayBtn.classList.toggle('show', !entry.isIntersecting);
     });
   }, { threshold: 0.4 });
- 
+
   todayObserver.observe(elementoHoje);
 }
- 
+
 backToTodayBtn.addEventListener('click', () => {
   if(displayYear !== REAL_CURRENT_YEAR){
     setDisplayYear(REAL_CURRENT_YEAR);
@@ -345,7 +483,6 @@ backToTodayBtn.addEventListener('click', () => {
   const el = document.querySelector('.day.today');
   if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
-
 
 /* =========================================================
    Modal: edição de dia (status manual + comentário)
@@ -363,7 +500,7 @@ let currentKey = null;
 let currentAutoType = null;
 
 function openDayModal(date){
-  const overrides = loadOverrides();
+  const overrides = getActiveOverrides();
   currentKey = dateKey(date);
   currentAutoType = calculateScheduleDate(date, currentConfig);
   const existing = overrides[currentKey];
@@ -372,6 +509,10 @@ function openDayModal(date){
   modalDate.textContent = `${dd} de ${monthNames[date.getMonth()]}`;
   modalStatus.value = existing ? existing.status : currentAutoType;
   modalComment.value = existing ? (existing.comment || '') : '';
+  modalStatus.disabled = isViewOnly;
+  modalComment.disabled = isViewOnly;
+  modalSave.style.display = isViewOnly ? 'none' : '';
+  modalReset.style.display = isViewOnly ? 'none' : '';
 
   modalOverlay.classList.add('open');
 }
@@ -385,7 +526,7 @@ modalClose.addEventListener('click', closeDayModal);
 modalOverlay.addEventListener('click', (e) => { if(e.target === modalOverlay) closeDayModal(); });
 
 modalSave.addEventListener('click', () => {
-  if(!currentKey) return;
+  if(!currentKey || isViewOnly) return;
   const overrides = loadOverrides();
   const status = modalStatus.value;
   const comment = modalComment.value.trim();
@@ -398,15 +539,17 @@ modalSave.addEventListener('click', () => {
   saveOverrides(overrides);
   closeDayModal();
   render();
+  syncToCloud();
 });
 
 modalReset.addEventListener('click', () => {
-  if(!currentKey) return;
+  if(!currentKey || isViewOnly) return;
   const overrides = loadOverrides();
   delete overrides[currentKey];
   saveOverrides(overrides);
   closeDayModal();
   render();
+  syncToCloud();
 });
 
 /* =========================================================
@@ -424,6 +567,10 @@ const cfgCustomGroup = document.getElementById('cfgCustomGroup');
 const cfgCustomWork = document.getElementById('cfgCustomWork');
 const cfgCustomOff = document.getElementById('cfgCustomOff');
 const cfgRefDate = document.getElementById('cfgRefDate');
+const settingsLoadExisting = document.getElementById('settingsLoadExisting');
+const settingsTitle = document.querySelector('#settingsOverlay h2');
+
+let settingsMode = 'edit'; // 'edit' | 'create'
 
 function updateSettingsVisibility(){
   const tipo = cfgTipo.value;
@@ -441,8 +588,19 @@ function fillSettingsForm(config){
   updateSettingsVisibility();
 }
 
-function openSettings(){
-  fillSettingsForm(currentConfig);
+function openSettings(mode){
+  settingsMode = mode || 'edit';
+  if(settingsMode === 'create'){
+    settingsTitle.textContent = 'Configure seu cronograma';
+    settingsSave.textContent = 'Criar meu cronograma';
+    settingsLoadExisting.style.display = '';
+    fillSettingsForm(DEFAULT_CONFIG);
+  }else{
+    settingsTitle.textContent = 'Configurações';
+    settingsSave.textContent = 'Salvar';
+    settingsLoadExisting.style.display = 'none';
+    fillSettingsForm(currentConfig);
+  }
   settingsOverlay.classList.add('open');
 }
 
@@ -450,12 +608,22 @@ function closeSettings(){
   settingsOverlay.classList.remove('open');
 }
 
+settingsLoadExisting.addEventListener('click', async () => {
+  const id = window.prompt('Cole aqui o ID do cronograma que você recebeu:');
+  if(!id) return;
+  const ok = await loadCronogramaById(id.trim().toUpperCase(), true);
+  if(ok){
+    closeSettings();
+    showToast('Cronograma carregado!');
+  }
+});
+
 cfgTipo.addEventListener('change', updateSettingsVisibility);
 settingsClose.addEventListener('click', closeSettings);
 settingsCancel.addEventListener('click', closeSettings);
 settingsOverlay.addEventListener('click', (e) => { if(e.target === settingsOverlay) closeSettings(); });
 
-settingsSave.addEventListener('click', () => {
+settingsSave.addEventListener('click', async () => {
   const refStatusInput = document.querySelector('input[name="cfgRefStatus"]:checked');
   if(!cfgRefDate.value){
     showToast('Defina uma data de referência');
@@ -471,30 +639,82 @@ settingsSave.addEventListener('click', () => {
       folga: Math.max(1, parseInt(cfgCustomOff.value, 10) || 1)
     }
   };
+
+  if(settingsMode === 'create'){
+    if(!cloudDisponivel()){
+      showToast('Recurso online indisponível — não é possível criar agora');
+      return;
+    }
+    showToast('Criando cronograma...');
+    try{
+      const novoId = await window.firebaseCronograma.salvarCronograma(
+        { config: newConfig, overrides: {} }
+        // sem 2º argumento: firebase.js gera um ID novo
+      );
+      setCloudId(novoId);
+      currentConfig = newConfig;
+      isViewOnly = false;
+      saveConfig(currentConfig);
+      saveOverrides({});
+      await window.firebaseCronograma.salvarIndice(novoId, {
+        nome: currentConfig.nome || '(sem nome)',
+        tipo: currentConfig.tipo,
+        atualizadoEm: Date.now()
+      });
+      updateHeader();
+      updateViewOnlyBanner();
+      closeSettings();
+      render();
+      showToast('Cronograma criado!');
+    }catch(e){
+      console.error('Erro ao criar cronograma:', e);
+      showToast('Erro ao criar cronograma');
+    }
+    return;
+  }
+
   currentConfig = newConfig;
   saveConfig(currentConfig);
   updateHeader();
   closeSettings();
   render();
   showToast('Configurações salvas!');
+  syncToCloud();
 });
 
 /* =========================================================
-   Compartilhar escala
+   Compartilhar escala (Firestore — mesmo ID sempre)
    ========================================================= */
 
 async function shareSchedule(){
-  const url = buildShareURL(currentConfig);
+  if(!cloudDisponivel()){
+    showToast('Recurso online indisponível agora');
+    return;
+  }
+
+  showToast('Gerando link...');
   try{
-    await navigator.clipboard.writeText(url);
-    showToast('Link copiado!');
+    const cloudId = await window.firebaseCronograma.salvarCronograma(
+      { config: currentConfig, overrides: loadOverrides() },
+      getCloudId() // reaproveita o ID se já existir; se não, o firebase.js gera um novo
+    );
+    setCloudId(cloudId);
+
+    const url = `${window.location.origin}${window.location.pathname}?id=${cloudId}`;
+    try{
+      await navigator.clipboard.writeText(url);
+      showToast('Link copiado!');
+    }catch(e){
+      window.prompt('Copie o link da sua escala:', url);
+    }
   }catch(e){
-    window.prompt('Copie o link da sua escala:', url);
+    console.error('Erro ao gerar link de compartilhamento:', e);
+    showToast('Erro ao gerar link');
   }
 }
 
 /* =========================================================
-   Conflito: config local existente vs link compartilhado
+   Conflito: cronograma local existente vs link compartilhado
    ========================================================= */
 
 const conflictOverlay = document.getElementById('conflictOverlay');
@@ -504,20 +724,25 @@ const conflictLoad = document.getElementById('conflictLoad');
 conflictKeep.addEventListener('click', () => {
   conflictOverlay.classList.remove('open');
   pendingSharedConfig = null;
+  pendingSharedOverrides = null;
+  pendingSharedId = null;
   cleanURL();
 });
 
-conflictLoad.addEventListener('click', () => {
-  if(pendingSharedConfig){
-    currentConfig = pendingSharedConfig;
-    saveConfig(currentConfig);
-    updateHeader();
-    render();
-  }
+conflictLoad.addEventListener('click', async () => {
+  const idParaCarregar = pendingSharedId;
   conflictOverlay.classList.remove('open');
   pendingSharedConfig = null;
+  pendingSharedOverrides = null;
+  pendingSharedId = null;
   cleanURL();
-  showToast('Escala carregada!');
+
+  if(idParaCarregar){
+    // Carrega em modo VISUALIZAÇÃO — o cronograma próprio deste dispositivo
+    // continua guardado, só não é o que está sendo mostrado agora.
+    const ok = await loadCronogramaById(idParaCarregar, false);
+    if(ok) showToast('Visualizando cronograma compartilhado');
+  }
 });
 
 /* =========================================================
@@ -530,12 +755,142 @@ aboutClose.addEventListener('click', () => aboutOverlay.classList.remove('open')
 aboutOverlay.addEventListener('click', (e) => { if(e.target === aboutOverlay) aboutOverlay.classList.remove('open'); });
 
 /* =========================================================
+   Meu cronograma (ID + copiar + compartilhar)
+   ========================================================= */
+
+const mineOverlay = document.getElementById('mineOverlay');
+const mineClose = document.getElementById('mineClose');
+const mineId = document.getElementById('mineId');
+const mineCopy = document.getElementById('mineCopy');
+const mineShare = document.getElementById('mineShare');
+
+function openMineModal(){
+  const id = getCloudId();
+  mineId.textContent = id || 'Ainda não compartilhado';
+  mineOverlay.classList.add('open');
+}
+
+mineClose.addEventListener('click', () => mineOverlay.classList.remove('open'));
+mineOverlay.addEventListener('click', (e) => { if(e.target === mineOverlay) mineOverlay.classList.remove('open'); });
+
+mineCopy.addEventListener('click', async () => {
+  const id = getCloudId();
+  if(!id){
+    showToast('Compartilhe primeiro pra gerar um ID');
+    return;
+  }
+  try{
+    await navigator.clipboard.writeText(id);
+    showToast('ID copiado!');
+  }catch(e){
+    window.prompt('Copie o ID:', id);
+  }
+});
+
+mineShare.addEventListener('click', () => {
+  mineOverlay.classList.remove('open');
+  shareSchedule();
+});
+
+/* =========================================================
+   Gerenciador de Cronogramas (protegido por senha)
+   ========================================================= */
+
+const managerPasswordOverlay = document.getElementById('managerPasswordOverlay');
+const managerPasswordClose = document.getElementById('managerPasswordClose');
+const managerPasswordCancel = document.getElementById('managerPasswordCancel');
+const managerPasswordSubmit = document.getElementById('managerPasswordSubmit');
+const managerPasswordInput = document.getElementById('managerPasswordInput');
+
+const managerListOverlay = document.getElementById('managerListOverlay');
+const managerListClose = document.getElementById('managerListClose');
+const managerListContent = document.getElementById('managerListContent');
+
+function openManagerPassword(){
+  managerPasswordInput.value = '';
+  managerPasswordOverlay.classList.add('open');
+}
+
+function closeManagerPassword(){
+  managerPasswordOverlay.classList.remove('open');
+}
+
+managerPasswordClose.addEventListener('click', closeManagerPassword);
+managerPasswordCancel.addEventListener('click', closeManagerPassword);
+managerPasswordOverlay.addEventListener('click', (e) => { if(e.target === managerPasswordOverlay) closeManagerPassword(); });
+
+managerPasswordSubmit.addEventListener('click', async () => {
+  const senha = managerPasswordInput.value;
+  if(!senha){
+    showToast('Digite a senha');
+    return;
+  }
+  if(!cloudDisponivel()){
+    showToast('Recurso online indisponível agora');
+    return;
+  }
+  try{
+    const hashCorreto = await window.firebaseCronograma.buscarHashSenhaGerenciador();
+    if(!hashCorreto){
+      showToast('Gerenciador ainda não configurado');
+      return;
+    }
+    const hashDigitado = await sha256Hex(senha);
+    if(hashDigitado !== hashCorreto){
+      showToast('Senha incorreta');
+      return;
+    }
+    closeManagerPassword();
+    await openManagerList();
+  }catch(e){
+    console.error('Erro ao validar senha do Gerenciador:', e);
+    showToast('Erro ao validar senha');
+  }
+});
+
+async function openManagerList(){
+  managerListContent.innerHTML = '<p class="manager-empty">Carregando...</p>';
+  managerListOverlay.classList.add('open');
+  try{
+    const lista = await window.firebaseCronograma.listarIndice();
+    if(!lista.length){
+      managerListContent.innerHTML = '<p class="manager-empty">Nenhum cronograma encontrado.</p>';
+      return;
+    }
+    lista.sort((a, b) => (b.atualizadoEm || 0) - (a.atualizadoEm || 0));
+    managerListContent.innerHTML = '';
+    lista.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'manager-item';
+      row.innerHTML = `
+        <div class="manager-item-info">
+          <span class="manager-item-name">${item.nome || '(sem nome)'}</span>
+          <span class="manager-item-meta">${item.tipo || '--'} · ${item.id}</span>
+        </div>
+        <button type="button">Visualizar</button>
+      `;
+      row.querySelector('button').addEventListener('click', async () => {
+        managerListOverlay.classList.remove('open');
+        await loadCronogramaById(item.id, false);
+      });
+      managerListContent.appendChild(row);
+    });
+  }catch(e){
+    console.error('Erro ao listar cronogramas:', e);
+    managerListContent.innerHTML = '<p class="manager-empty">Erro ao carregar a lista.</p>';
+  }
+}
+
+managerListClose.addEventListener('click', () => managerListOverlay.classList.remove('open'));
+managerListOverlay.addEventListener('click', (e) => { if(e.target === managerListOverlay) managerListOverlay.classList.remove('open'); });
+
+/* =========================================================
    Render do calendário
    ========================================================= */
 
 function render(){
   container.innerHTML = '';
-  const overrides = loadOverrides();
+  const overrides = getActiveOverrides();
 
   for(let monthIdx = 0; monthIdx < 12; monthIdx++){
     const year = displayYear;
@@ -583,35 +938,67 @@ function render(){
     container.appendChild(monthEl);
   }
 
+  // clique nos dias (delegado no container, funciona pra todos os meses)
   container.querySelectorAll('.day:not(.empty)').forEach(el => {
     el.addEventListener('click', () => {
       const [y, m, d] = el.dataset.date.split('-').map(Number);
       openDayModal(new Date(y, m - 1, d));
     });
   });
- 
-  setupBackToTodayWatcher();
 
+  setupBackToTodayWatcher();
 }
 
 /* =========================================================
    Inicialização
    ========================================================= */
 
-function init(){
-  const shared = parseSharedConfigFromURL();
-  const localExists = hasStoredConfig();
+async function init(){
+  const params = new URLSearchParams(window.location.search);
+  const urlId = params.get('id');
+  const myCloudId = getCloudId();
 
-  if(shared && localExists){
-    pendingSharedConfig = shared;
-    conflictOverlay.classList.add('open');
-  }else if(shared && !localExists){
-    currentConfig = shared;
-    saveConfig(currentConfig);
+  if(urlId){
+    if(urlId === myCloudId){
+      // Caso B: é o meu próprio link — recarrega/sincroniza como dono
+      await loadCronogramaById(urlId, true);
+    }else if(myCloudId){
+      // Caso C: já tenho outro cronograma — não sobrescreve sem perguntar
+      if(cloudDisponivel()){
+        showToast('Carregando cronograma compartilhado...');
+        try{
+          const cloudData = await window.firebaseCronograma.carregarCronogramaPorId(urlId);
+          if(cloudData && cloudData.config){
+            pendingSharedConfig = cloudData.config;
+            pendingSharedOverrides = cloudData.overrides || {};
+            pendingSharedId = urlId;
+            conflictOverlay.classList.add('open');
+          }else{
+            showToast('Cronograma não encontrado');
+          }
+        }catch(e){
+          console.error('Erro ao carregar cronograma compartilhado:', e);
+        }
+      }
+    }else{
+      // Caso A: não tenho cronograma nenhum ainda — abre em modo visualização,
+      // NÃO vira meu automaticamente (essa é a regra principal desta versão)
+      await loadCronogramaById(urlId, false);
+    }
     cleanURL();
+  }else if(myCloudId || hasStoredConfig()){
+    // Já tenho cronograma local — comportamento normal
+    currentConfig = loadConfig();
+  }else{
+    // Caso D: nada de nada — tela de criação
+    updateHeader();
+    render();
+    openSettings('create');
+    return;
   }
 
   updateHeader();
+  updateViewOnlyBanner();
   render();
 
   const elementoHoje = document.querySelector('.day.today');
