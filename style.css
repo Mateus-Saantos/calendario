@@ -648,4 +648,8 @@ footer{
   .day{
     font-size: 17px;
   }
+  .pin{
+    margin-bottom: 10px;
+    font-size: 14px !important;
+  }
 }
